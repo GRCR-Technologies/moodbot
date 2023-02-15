@@ -20,27 +20,27 @@ SoftwareSerial SwSerial(10, 11); // RX, TX
 
 
 
-#define L_WHL_PWM_PIN 6  //9
-#define L_WHL_DIR_PIN 7  //8
+#define L_WHL_PWM_PIN 3  //6  //9
+#define L_WHL_DIR_PIN 2  //7  //8
 #define L_WHL_DIR_MAP 0x01
 
-#define R_WHL_PWM_PIN 5  //3
-#define R_WHL_DIR_PIN 8  //2
+#define R_WHL_PWM_PIN 9  //5  //3
+#define R_WHL_DIR_PIN 4  //8  //2
 #define R_WHL_DIR_MAP 0x02
 
-#define DIG_ROT_PWM_PIN 3
+#define DIG_ROT_PWM_PIN 6
 #define DIG_ROT_ON_MAP 0x04
-#define DIG_ROT_DIR_PIN 12
+#define DIG_ROT_DIR_PIN 7
 #define DIG_ROT_DIR_MAP 0x08
 #define DIG_ROT_PWM_MAX 127
 
-#define DIG_MOVE_PWM_PIN 9
+#define DIG_MOVE_PWM_PIN 5
 #define DIG_MOVE_ON_MAP 0x10
-#define DIG_MOVE_DIR_PIN 13
+#define DIG_MOVE_DIR_PIN 8
 #define DIG_MOVE_DIR_MAP 0x20
 #define DIG_MOVE_PWM_MAX 127
 
-#define LED 4
+#define LED 12
 #define LED_MAP 0x40
 
 byte data[3];

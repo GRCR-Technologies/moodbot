@@ -61,7 +61,7 @@ def calc_speed(axis):
 
 def main():
 
-    with serial.Serial('/dev/tty.usbserial-2130', 38400) as ser:
+    with serial.Serial('/dev/tty.usbserial-2140', 38400) as ser:
         print(ser.readline())
         joysticks = {}
         done = False
