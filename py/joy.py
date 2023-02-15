@@ -21,6 +21,9 @@ import serial
 
 MAX_PWM = 127
 
+DEBUG = True
+
+
 pygame.init()
 
 def get_crc8( data: bytes, poly: int) -> int:
@@ -34,7 +37,28 @@ def get_crc8( data: bytes, poly: int) -> int:
                     crc >>= 1
         return crc & 0xff
 
-def calc_speed(axis):
+
+# calc_speed (xbox controller)
+#
+#       A4/(-1)
+#         |
+# A3(-1)--+--A3/(1)
+#         |
+#       A4/(1)
+# 
+# calc_buttons (xbox controller)
+# 
+# DIG_ARM_UP:B3 
+# DIG_ARM_DOWN:B0
+# DIG_ARM_ROTATE:B5 
+# DIG_ARM_C-ROTATE:B4
+# LED:B2
+# 
+
+def handle_joy(axis, buttons):
+    
+
+          
     l_wheels_spd = 0
     r_wheels_spd = 0
 
@@ -52,17 +76,31 @@ def calc_speed(axis):
         r_wheels_spd = -MAX_PWM
     
     data = [0xFF, abs(l_wheels_spd), abs(r_wheels_spd), 0x00, 0]
-    data[3] = (0x00 if l_wheels_spd > 0 else 0x1) + (0x02 if r_wheels_spd > 0 else 0x00)  
-    # data = [0xFF, 100, 100, 0x00, 0]
+    data[3] = (0x00 if l_wheels_spd > 0 else 0x1) | (0x02 if r_wheels_spd > 0 else 0x00)
+
+    # calc_buttons (xbox controller)
+    if buttons[3] or buttons[0]:
+        data[3] |= 0x04
+        if buttons[3]:
+            data[3] |= 0x08
+
+    if buttons[5] or buttons[4]:
+        data[3] |= 0x10
+        if buttons[5]:
+            data[3] |= 0x20
+
+    if buttons[2]:
+        data[3] |= 0x40
+
     crc = get_crc8(bytes(data[1:4]), 0X8C)
     data[4] = crc
     return data
 
-
 def main():
 
-    with serial.Serial('/dev/tty.usbserial-2140', 38400) as ser:
-        print(ser.readline())
+    with serial.Serial('/dev/tty.usbserial-130', 38400) as ser:
+        if not DEBUG:
+            print(ser.readline( ))
         joysticks = {}
         done = False
         axis = None
@@ -87,11 +125,18 @@ def main():
                 axis = [joystick.get_axis(x) for x in range(joystick.get_numaxes())]
                 buttons = [joystick.get_button(x) for x in range(joystick.get_numbuttons())]
             time.sleep(0.01)
+
+            if DEBUG:
+                print(f'axis: {axis}')
+                print(f'buttons: {buttons}')
             if axis is not None:
-                data = calc_speed(axis)
+                data = handle_joy(axis, buttons)
                 print(data)
-                ser.write(serial.to_bytes(data))
-                print(ser.readline())
+                bin_data = [str(bin(x)) for x in data]
+                print(bin_data)
+
+            #     ser.write(serial.to_bytes(data))
+            #     print(ser.readline())
             c_time = time.time()-last_time
             print(f'{c_time*1000}ms {1/c_time}Hz')
 
