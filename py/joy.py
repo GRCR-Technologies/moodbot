@@ -21,7 +21,7 @@ import serial
 
 MAX_PWM = 127
 
-DEBUG = True
+DEBUG = False
 
 
 pygame.init()
@@ -56,9 +56,7 @@ def get_crc8( data: bytes, poly: int) -> int:
 # 
 
 def handle_joy(axis, buttons):
-    
-
-          
+  
     l_wheels_spd = 0
     r_wheels_spd = 0
 
@@ -135,12 +133,12 @@ def main():
                 bin_data = [str(bin(x)) for x in data]
                 print(bin_data)
 
-            #     ser.write(serial.to_bytes(data))
-            #     print(ser.readline())
+                ser.write(serial.to_bytes(data))
+                print(ser.readline())
             c_time = time.time()-last_time
             print(f'{c_time*1000}ms {1/c_time}Hz')
 
 
 if __name__ == "__main__":
     main()
-    pygame.quit()
+    pygame.quit()       
