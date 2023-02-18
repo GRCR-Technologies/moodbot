@@ -68,8 +68,8 @@ class ButtonReader:
     def __init__(self):
         # Define the button
         self.button_led = Button(25)
-        self.button_dig_up = Button(23)
-        self.button_dig_down = Button(44)
+        self.button_dig_up = Button(24)
+        self.button_dig_down = Button(23)
         self.button_dig_cw = Button(27)
         self.button_dig_ccw = Button(22)
 
