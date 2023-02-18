@@ -1,60 +1,75 @@
 from gpiozero import Button, MCP3004
-from time import sleep
+from time import time, sleep
 import serial
 import RPi.GPIO as GPIO
 from  MFRC522 import MFRC522
+import threading
 
 # RFID reader
 class MFRC522Reader:
 
-  READER = None
-  
-  KEY = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
-  BLOCK_ADDRS = [8, 9, 10]
-  
-  def __init__(self):
-    self.READER = MFRC522(device=1, pin_rst=17)
-  
-  def read(self):
-      id, text = self.read_no_block()
-      while not id:
-          id, text = self.read_no_block()
-      return id, text
-  
-  def read_no_block(self):
-    (status, TagType) = self.READER.MFRC522_Request(self.READER.PICC_REQIDL)
-    if status != self.READER.MI_OK:
-        return None, None
-    (status, uid) = self.READER.MFRC522_Anticoll()
-    if status != self.READER.MI_OK:
-        return None, None
-    id = self.uid_to_num(uid)
-    self.READER.MFRC522_SelectTag(uid)
-    status = self.READER.MFRC522_Auth(self.READER.PICC_AUTHENT1A, 11, self.KEY, uid)
-    data = []
-    text_read = ''
-    if status == self.READER.MI_OK:
-        for block_num in self.BLOCK_ADDRS:
-            block = self.READER.MFRC522_Read(block_num) 
-            if block:
-                data += block
-        if data:
-             text_read = ''.join(chr(i) for i in data)
-    self.READER.MFRC522_StopCrypto1()
-    return id, text_read
-      
-  def uid_to_num(self, uid):
-      n = 0
-      for i in range(0, 5):
-          n = n * 256 + uid[i]
-      return n
+    READER = None
+    
+    KEY = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
+    BLOCK_ADDRS = [8, 9, 10]
+    
+    def __init__(self):
+        self.READER = MFRC522(device=1, pin_rst=11)
+        self.id = None
+        self.text = None
+
+    def run_loop(self):
+        while True:
+            print("Hold a tag near the reader")
+            self.id, self.text = self.read()
+            sleep(1)
+
+    def run(self):
+        t = threading.Thread(target=self.run_loop)  
+        t.daemon = True
+        t.start()
+
+    
+    def read(self):
+        id, text = self.read_no_block()
+        while not id:
+            id, text = self.read_no_block()
+        return id, text
+    
+    def read_no_block(self):
+        (status, TagType) = self.READER.MFRC522_Request(self.READER.PICC_REQIDL)
+        if status != self.READER.MI_OK:
+            return None, None
+        (status, uid) = self.READER.MFRC522_Anticoll()
+        if status != self.READER.MI_OK:
+            return None, None
+        id = self.uid_to_num(uid)
+        self.READER.MFRC522_SelectTag(uid)
+        status = self.READER.MFRC522_Auth(self.READER.PICC_AUTHENT1A, 11, self.KEY, uid)
+        data = []
+        text_read = ''
+        if status == self.READER.MI_OK:
+            for block_num in self.BLOCK_ADDRS:
+                block = self.READER.MFRC522_Read(block_num) 
+                if block:
+                    data += block
+            if data:
+                text_read = ''.join(chr(i) for i in data)
+        self.READER.MFRC522_StopCrypto1()
+        return id, text_read
+        
+    def uid_to_num(self, uid):
+        n = 0
+        for i in range(0, 5):
+            n = n * 256 + uid[i]
+        return n
 
 
 # Joystick reader
 class MCP3004Reader:
     def __init__(self):
-        self.axis_x = MCP3004(channel=0, differential=True)
-        self.axis_y = MCP3004(channel=1, differential=True)
+        self.axis_x = MCP3004(channel=0)
+        self.axis_y = MCP3004(channel=1)
 
     def read(self):
         return [self.axis_x.value, self.axis_y.value]
@@ -153,25 +168,69 @@ def handle_joy(axis, buttons):
     data[4] = crc
     return data
 
+# TODO: Implement RFID list check
+def check_rfid(rfid):
+    return True
+
+# TODO: Implement battery level check
+def handle_bat_lvl(rx_msg):
+    print(rx_msg)
+
+
 rfid_reader = MFRC522Reader()
+rfid_reader.run()
 joystick_reader = MCP3004Reader()
 button_reader = ButtonReader()
+timeout = True
 
 try:
-    while True:
-        print("Hold a tag near the reader")
-        id, text = rfid_reader.read()
-        print(f'ID: {id}\nText: {text}')
-        axis = joystick_reader.read()
-        print(f'X: {axis[0]}\nY: {axis[1]}')
-        buttons = button_reader.read()
-        print(f'LED: {buttons[0]}\n\
-                DIG_UP: {buttons[1]}\n\
-                DIG_DOWN: {buttons[2]}\n\
-                DIG_CW: {buttons[3]}\n\
-                DIG_CCW: {buttons[4]}')
-        print(f'data_to_send:{handle_joy(axis, buttons)}')
-        sleep(1)
+    with serial.Serial(port='/dev/ttyUSB0', baudrate=38400, timeout=1) as ser:  
+        while True:
+            try:
+                rx_msg = ser.readline()
+                handle_bat_lvl(ser)
+            except Exception:
+                pass
+
+            while timeout:
+                if rfid_reader is not None:
+                    if check_rfid(rfid_reader.id):
+                        print(f'RFID: {rfid_reader.id}')
+                        timeout = False
+                try:
+                    rx_msg = ser.readline()
+                    handle_bat_lvl(ser)
+                except Exception:
+                    pass
+                sleep(0.5)
+
+
+            start_time = time()
+
+            while not timeout:
+                axis = joystick_reader.read()
+                buttons = button_reader.read()
+                data = handle_joy(axis, buttons)
+                try:
+                    ser.write(serial.to_bytes(data))
+                    rx_msg = ser.readline()
+                    handle_bat_lvl(ser)
+                except Exception:
+                    pass
+
+                print(f'X: {axis[0]}\nY: {axis[1]}')
+                print(f'LED: {buttons[0]}\n\
+                        DIG_UP: {buttons[1]}\n\
+                        DIG_DOWN: {buttons[2]}\n\
+                        DIG_CW: {buttons[3]}\n\
+                        DIG_CCW: {buttons[4]}')
+                print(f'data_to_send:{data}')
+
+                if start_time + 60 < time():
+                    timeout = True
+                    print("Timeout")
+
+                sleep(0.1)
 except KeyboardInterrupt:
     GPIO.cleanup()
     raise
