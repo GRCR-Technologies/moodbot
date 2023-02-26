@@ -22,6 +22,7 @@ class MFRC522Reader:
         while True:
             print("Hold a tag near the reader")
             self.id, self.text = self.read()
+            print(self.id)
             sleep(1)
 
     def run(self):
@@ -132,9 +133,15 @@ def handle_joy(axis, buttons):
 
     l_wheels_spd = 0
     r_wheels_spd = 0
-
-    l_r_coef = int(axis[0]*MAX_PWM)
-    f_b_coef = int(axis[1]*MAX_PWM)
+    if abs(axis[0]-0.5) < 0.1:
+        l_r_coef = 0
+    else:
+        l_r_coef = int((axis[0]-0.5)*2*MAX_PWM)
+    
+    if  abs(axis[1]-0.5) < 0.1:
+        f_b_coef = 0
+    else:
+        f_b_coef = int((axis[1]-0.5)*-2*MAX_PWM)
     l_wheels_spd = (f_b_coef-l_r_coef)*-1
     r_wheels_spd = (f_b_coef+l_r_coef)*-1
     if l_wheels_spd > MAX_PWM:
@@ -161,7 +168,7 @@ def handle_joy(axis, buttons):
         if buttons[3]:
             data[3] |= 0x08
     # LED
-    if buttons[5]:
+    if buttons[0]:
         data[3] |= 0x40
 
     crc = get_crc8(bytes(data[1:4]), 0X8C)
@@ -188,25 +195,31 @@ try:
         while True:
             try:
                 rx_msg = ser.readline()
-                handle_bat_lvl(ser)
+                handle_bat_lvl(rx_msg)
             except Exception:
                 pass
 
             while timeout:
-                if rfid_reader is not None:
+                if rfid_reader.id is not None:
                     if check_rfid(rfid_reader.id):
                         print(f'RFID: {rfid_reader.id}')
                         timeout = False
-                try:
+                else:
+                    print("Activete with Access Key!")
+                    ser.write(serial.to_bytes([255, 0, 0, 1, 94]))
                     rx_msg = ser.readline()
-                    handle_bat_lvl(ser)
-                except Exception:
-                    pass
-                sleep(0.5)
+                    handle_bat_lvl(rx_msg)
+
+                #try:
+                #    rx_msg = ser.readline()
+                #    handle_bat_lvl(ser)
+                #except Exception:
+                #    pass
+                sleep(1)
 
 
             start_time = time()
-
+            rfid_reader.id = None
             while not timeout:
                 axis = joystick_reader.read()
                 buttons = button_reader.read()
@@ -214,23 +227,29 @@ try:
                 try:
                     ser.write(serial.to_bytes(data))
                     rx_msg = ser.readline()
-                    handle_bat_lvl(ser)
-                except Exception:
-                    pass
+                    handle_bat_lvl(rx_msg)
+                except Exception as err:
+                    print(err)
 
-                print(f'X: {axis[0]}\nY: {axis[1]}')
-                print(f'LED: {buttons[0]}\n\
-                        DIG_UP: {buttons[1]}\n\
-                        DIG_DOWN: {buttons[2]}\n\
-                        DIG_CW: {buttons[3]}\n\
-                        DIG_CCW: {buttons[4]}')
+                print(f'X: {axis[0]-0.5}\nY: {axis[1]-0.5}')
+                #print(f'LED: {buttons[0]}\n\
+                #        DIG_UP: {buttons[1]}\n\
+                #        DIG_DOWN: {buttons[2]}\n\
+                #        DIG_CW: {buttons[3]}\n\
+                #        DIG_CCW: {buttons[4]}')
                 print(f'data_to_send:{data}')
-
-                if start_time + 60 < time():
+                now = time()
+                print(now-start_time)
+                if start_time + 10 < now:
+                    print("Disarm!")
+                    ser.write(serial.to_bytes([255, 0, 0, 1, 94]))
+                    rx_msg = ser.readline()
+                    handle_bat_lvl(rx_msg)
+                    #send disarm
                     timeout = True
-                    print("Timeout")
+                    print("Timeout!")
 
-                sleep(0.1)
+                sleep(0.05)
 except KeyboardInterrupt:
     GPIO.cleanup()
     raise
