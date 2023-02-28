@@ -21,7 +21,7 @@ window.configure(bg='black')
 class App:
     def __init__(self, window):
 
-        self.window = window
+        self.window: tk.Tk = window
         self.cnt = 0
         self.cnt_sts = False
         self.timer = Label(self.window, text="00:00", font=("Arial", 96), foreground="white", relief="solid", background="black")
