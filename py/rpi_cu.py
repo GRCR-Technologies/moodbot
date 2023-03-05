@@ -1,9 +1,24 @@
 from gpiozero import Button, MCP3004
 from time import time, sleep
-import serial
+import serial 
 import RPi.GPIO as GPIO
 from  MFRC522 import MFRC522
 import threading
+# importing tkinter for gui
+import tkinter as tk
+from tkinter.ttk import Label
+
+
+def get_crc8( data: bytes, poly: int) -> int:
+        crc = 0
+        for b in data:
+            crc ^= b
+            for i in range(8):
+                if crc & 1:
+                    crc = (crc >> 1) ^ poly
+                else:
+                    crc >>= 1
+        return crc & 0xff
 
 # RFID reader
 class MFRC522Reader:
@@ -17,6 +32,7 @@ class MFRC522Reader:
         self.READER = MFRC522(device=1, pin_rst=11)
         self.id = None
         self.text = None
+        self.t = None
 
     def run_loop(self):
         while True:
@@ -26,9 +42,9 @@ class MFRC522Reader:
             sleep(1)
 
     def run(self):
-        t = threading.Thread(target=self.run_loop)  
-        t.daemon = True
-        t.start()
+        self.t = threading.Thread(target=self.run_loop)  
+        self.t.daemon = True
+        self.t.start() 
 
     
     def read(self):
@@ -99,159 +115,163 @@ class ButtonReader:
         ]
 
     def close(self):
-        self.button.close()
+        self.button_led.close()
+        self.button_dig_up.close()
+        self.button_dig_down.close()
+        self.button_dig_cw.close()
+        self.button_dig_ccw.close()
+
+class App:
+    GAME_TIMEOUT = 10 # 360=3min
+    DEBUG = True
+
+    def __init__(self, window):
+        self.window: tk.Tk = window
+        self.rfid_reader = MFRC522Reader()
+        self.rfid_reader.run()
+        self.joystick_reader = MCP3004Reader()
+        self.button_reader = ButtonReader()
+        self.timeout = True
+        self.rf_serial = self.open_rf_serial()
+        self.id_serial = None
+        self.timeout = True
+        self.start_time = time()
+        self.rate = 1000
+
+    def handle_joy(self, axis, buttons):
+        MAX_PWM = 127
+
+        l_wheels_spd = 0
+        r_wheels_spd = 0
+        if abs(axis[0]-0.5) < 0.1:
+            l_r_coef = 0
+        else:
+            l_r_coef = int((axis[0]-0.5)*2*MAX_PWM)
+        
+        if  abs(axis[1]-0.5) < 0.1:
+            f_b_coef = 0
+        else:
+            f_b_coef = int((axis[1]-0.5)*-2*MAX_PWM)
+        l_wheels_spd = (f_b_coef-l_r_coef)*-1
+        r_wheels_spd = (f_b_coef+l_r_coef)*-1
+        if l_wheels_spd > MAX_PWM:
+            l_wheels_spd = MAX_PWM
+        if l_wheels_spd < -MAX_PWM:
+            l_wheels_spd = -MAX_PWM
+        if r_wheels_spd > MAX_PWM:
+            r_wheels_spd = MAX_PWM
+        if r_wheels_spd < -MAX_PWM:
+            r_wheels_spd = -MAX_PWM
+        
+        data = [0xFF, abs(l_wheels_spd), abs(r_wheels_spd), 0x00, 0]
+        data[3] = (0x00 if l_wheels_spd > 0 else 0x1) | (0x02 if r_wheels_spd > 0 else 0x00)
+
+        # Digger movement
+        if buttons[1] or buttons[2]:
+            data[3] |= 0x10 
+            if buttons[1]:
+                data[3] |= 0x20
+
+        # Digger rotation
+        if buttons[3] or buttons[4]:
+            data[3] |= 0x04
+            if buttons[3]:
+                data[3] |= 0x08
+        # LED
+        if buttons[0]:
+            data[3] |= 0x40
+
+        crc = get_crc8(bytes(data[1:4]), 0X8C)
+        data[4] = crc
+        return data
+
+    # TODO: Implement RFID list check
+    def check_rfid(self, rfid):
+        return True
+
+    # TODO: Implement battery level check
+    def handle_bat_lvl(self, rx_msg):
+        print(rx_msg)
 
 
-# // [START][SPD_R][SPD_L][CTRL][CRC]
-# // [0xff][0-255][0-255][0-127][0-255]
-# // START: 0xff
-# // SPD_L: 0-255
-# // SPD_R: 0-255
-# // CTRL: 0-127
-# // CTRL.0: 0 = SPD_L_BWD ,      1 = SPD_L_FWD   0x01
-# // CTRL.1: 0 = SPD_R_BWD ,      1 = SPD_R_FWD   0x02
-# // CTRL.2: 0 = DIG_ROT_OFF ,    1 = DIG_ROT_ON  0x04
-# // CTRL.3: 0 = DIG_ROT_BWD ,    1 = DIG_ROT_FWD 0x08
-# // CTRL.4: 0 = DIG_MOVE_OFF ,   1 = DIG_MOVE_ON 0x10
-# // CTRL.5: 0 = DIG_MOVE_DWN ,   1 = DIG_MOVE_UP 0x20
-# // CTRL.6: 0 = LED_OFF ,        1 = LED_ON      0x40
-# // CRC: 0-255
+    def open_rf_serial(self):
+        return serial.Serial(port='/dev/ttyUSB0', baudrate=38400, timeout=1)
 
-def get_crc8( data: bytes, poly: int) -> int:
-        crc = 0
-        for b in data:
-            crc ^= b
-            for i in range(8):
-                if crc & 1:
-                    crc = (crc >> 1) ^ poly
-                else:
-                    crc >>= 1
-        return crc & 0xff
-
-def handle_joy(axis, buttons):
-    MAX_PWM = 127
-
-    l_wheels_spd = 0
-    r_wheels_spd = 0
-    if abs(axis[0]-0.5) < 0.1:
-        l_r_coef = 0
-    else:
-        l_r_coef = int((axis[0]-0.5)*2*MAX_PWM)
-    
-    if  abs(axis[1]-0.5) < 0.1:
-        f_b_coef = 0
-    else:
-        f_b_coef = int((axis[1]-0.5)*-2*MAX_PWM)
-    l_wheels_spd = (f_b_coef-l_r_coef)*-1
-    r_wheels_spd = (f_b_coef+l_r_coef)*-1
-    if l_wheels_spd > MAX_PWM:
-        l_wheels_spd = MAX_PWM
-    if l_wheels_spd < -MAX_PWM:
-        l_wheels_spd = -MAX_PWM
-    if r_wheels_spd > MAX_PWM:
-        r_wheels_spd = MAX_PWM
-    if r_wheels_spd < -MAX_PWM:
-        r_wheels_spd = -MAX_PWM
-    
-    data = [0xFF, abs(l_wheels_spd), abs(r_wheels_spd), 0x00, 0]
-    data[3] = (0x00 if l_wheels_spd > 0 else 0x1) | (0x02 if r_wheels_spd > 0 else 0x00)
-
-    # Digger movement
-    if buttons[1] or buttons[2]:
-        data[3] |= 0x10 
-        if buttons[1]:
-            data[3] |= 0x20
-
-    # Digger rotation
-    if buttons[3] or buttons[4]:
-        data[3] |= 0x04
-        if buttons[3]:
-            data[3] |= 0x08
-    # LED
-    if buttons[0]:
-        data[3] |= 0x40
-
-    crc = get_crc8(bytes(data[1:4]), 0X8C)
-    data[4] = crc
-    return data
-
-# TODO: Implement RFID list check
-def check_rfid(rfid):
-    return True
-
-# TODO: Implement battery level check
-def handle_bat_lvl(rx_msg):
-    print(rx_msg)
+    def check_id_status(self):
+        if self.rfid_reader.id is not None:
+            if self.check_rfid(self.rfid_reader.id):
+                print(f'RFID: {self.rfid_reader.id}')
+                self.timeout = False
+                self.start_time = time()
+                self.rate = 50
+        else:
+            print("Activete with Access Key!")
+            self.rf_serial.write(serial.to_bytes([255, 0, 0, 1, 94]))
+            rx_msg = self.rf_serial.readline()
+            self.handle_bat_lvl(rx_msg)
 
 
-rfid_reader = MFRC522Reader()
-rfid_reader.run()
-joystick_reader = MCP3004Reader()
-button_reader = ButtonReader()
-timeout = True
+    def run_rf_communication(self):
+        try:
+            now = time()
+            print(now-self.start_time)
+            self.rfid_reader.id = None
 
-try:
-    with serial.Serial(port='/dev/ttyUSB0', baudrate=38400, timeout=1) as ser:  
-        while True:
-            try:
-                rx_msg = ser.readline()
-                handle_bat_lvl(rx_msg)
-            except Exception:
-                pass
+            axis = self.joystick_reader.read()
+            buttons = self.button_reader.read()
+            data = self.handle_joy(axis, buttons)
+       
+            self.rf_serial.write(serial.to_bytes(data))
+            rx_msg = self.rf_serial.readline()
+            self.handle_bat_lvl(rx_msg)
 
-            while timeout:
-                if rfid_reader.id is not None:
-                    if check_rfid(rfid_reader.id):
-                        print(f'RFID: {rfid_reader.id}')
-                        timeout = False
-                else:
-                    print("Activete with Access Key!")
-                    ser.write(serial.to_bytes([255, 0, 0, 1, 94]))
-                    rx_msg = ser.readline()
-                    handle_bat_lvl(rx_msg)
-
-                #try:
-                #    rx_msg = ser.readline()
-                #    handle_bat_lvl(ser)
-                #except Exception:
-                #    pass
-                sleep(1)
-
-
-            start_time = time()
-            rfid_reader.id = None
-            while not timeout:
-                axis = joystick_reader.read()
-                buttons = button_reader.read()
-                data = handle_joy(axis, buttons)
-                try:
-                    ser.write(serial.to_bytes(data))
-                    rx_msg = ser.readline()
-                    handle_bat_lvl(rx_msg)
-                except Exception as err:
-                    print(err)
-
+            if self.DEBUG:
                 print(f'X: {axis[0]-0.5}\nY: {axis[1]-0.5}')
-                #print(f'LED: {buttons[0]}\n\
-                #        DIG_UP: {buttons[1]}\n\
-                #        DIG_DOWN: {buttons[2]}\n\
-                #        DIG_CW: {buttons[3]}\n\
-                #        DIG_CCW: {buttons[4]}')
                 print(f'data_to_send:{data}')
-                now = time()
-                print(now-start_time)
-                if start_time + 10 < now:
-                    print("Disarm!")
-                    ser.write(serial.to_bytes([255, 0, 0, 1, 94]))
-                    rx_msg = ser.readline()
-                    handle_bat_lvl(rx_msg)
-                    #send disarm
-                    timeout = True
-                    print("Timeout!")
 
-                sleep(0.05)
-except KeyboardInterrupt:
-    GPIO.cleanup()
-    raise
+            if self.start_time + self.GAME_TIMEOUT < now:
+                print("Disarm: Timeout!")
+                self.rf_serial.write(serial.to_bytes([255, 0, 0, 1, 94]))
+                rx_msg = self.rf_serial.readline()
+                self.handle_bat_lvl(rx_msg)
+                self.timeout = True
+                self.rate = 1000
+        except Exception as err:
+            print(err)
+            #TODO: remove card from used cards list if failed
+
+    def run_loop(self):
+        if self.timeout:
+            self.check_id_status()
+        else:
+            self.run_rf_communication()
+        self.window.after(self.rate, self.run_loop)
+    
+    def close(self):
+        self.joystick_reader.close()
+        self.button_reader.close()
+        self.rf_serial.close()
+            
+
+
+if __name__ == '__main__':
+    try:
+        # creating window
+        window = tk.Tk()
+        
+        # setting attribute
+        #Owindow.attributes('-fullscreen', True)
+        window.title("Moodbot v0.1.0")
+        window.geometry("800x480") 
+        window.configure(bg='black')
+
+        # creating object
+        app = App(window)
+        window.after(app.rate, app.run_loop)
+        window.mainloop()
+    except KeyboardInterrupt:
+        print("Cleaning up!")
+        GPIO.cleanup()
+        exit()
 
 
