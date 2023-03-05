@@ -138,7 +138,7 @@ class App:
         self.start_time = time()
         self.rate = 1000
 
-    def handle_joy(axis, buttons):
+    def handle_joy(self, axis, buttons):
         MAX_PWM = 127
 
         l_wheels_spd = 0
@@ -186,11 +186,11 @@ class App:
         return data
 
     # TODO: Implement RFID list check
-    def check_rfid(rfid):
+    def check_rfid(self, rfid):
         return True
 
     # TODO: Implement battery level check
-    def handle_bat_lvl(rx_msg):
+    def handle_bat_lvl(self, rx_msg):
         print(rx_msg)
 
 
