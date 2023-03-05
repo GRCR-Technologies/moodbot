@@ -310,6 +310,7 @@ if __name__ == '__main__':
         window.mainloop()
     except KeyboardInterrupt:
         print("Cleaning up!")
+        window.destroy()
         GPIO.cleanup()
         exit()
 
