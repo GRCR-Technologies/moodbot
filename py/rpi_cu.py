@@ -143,11 +143,28 @@ class App:
     def init_gui(self):
         self.cnt = 0
         self.cnt_sts = False
-        self.timer = Label(self.window, text="00:00", font=("Arial", 96), foreground="white", relief="solid", background="black")
-        self.msg = Label(self.window, text=" Noskenējiet karti!", font=("Arial", 48), foreground="white", relief="solid", background="black")
+        self.timer = Label(
+            self.window,
+            text="00:00",
+            font=("Arial", 96),
+            foreground="white",
+            relief="solid",
+            background="black")
+        self.msg = Label(
+            self.window, text=" Noskenējiet karti!",
+            font=("Arial", 52), 
+            foreground="white",
+            relief="solid",
+            background="black")
         self.msg.place(x=10, y=200)
-        self.bat = Label(self.window, text="100%", font=("Arial", 48), foreground="white", relief="solid", background="black")
-        self.bat.place(x=630,)
+        self.bat = Label(
+            self.window,
+            text="100%",
+            font=("Arial", 48),
+            foreground="white",
+            relief="solid",
+            background="black")
+        self.bat.place(x=620,)
 
     def mission_complete(self):
         self.msg.config(text="  Misija pabeigta!")
@@ -166,7 +183,8 @@ class App:
         self.window.after(1000, self.countdown)
     
     def countdown(self):
-        self.timer.config(text=f'{int((self.cnt-(self.cnt%60))/60):02d}:{self.cnt%60:02d}')
+        self.timer.config(
+            text=f'{int((self.cnt-(self.cnt%60))/60):02d}:{self.cnt%60:02d}')
         self.cnt -= 1
 
         if self.cnt < 0:
@@ -299,14 +317,13 @@ if __name__ == '__main__':
         
         # setting attribute
         #Owindow.attributes('-fullscreen', True)
-        window.title("Moodbot v0.1.0")
+        window.title("Moodbot v0.4.0")
         window.geometry("800x480") 
         window.configure(bg='black')
 
         # creating object
         app = App(window)
         window.after(app.rate, app.run_loop)
-        window.after(app.rate, app.)
         window.mainloop()
     except KeyboardInterrupt:
         print("Cleaning up!")
