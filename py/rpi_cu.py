@@ -146,13 +146,13 @@ class App:
         self.timer = Label(
             self.window,
             text="00:00",
-            font=("Arial", 96),
+            font=("Arial", 160),
             foreground="white",
             relief="solid",
             background="black")
         self.msg = Label(
-            self.window, text=" Noskenējiet karti!",
-            font=("Arial", 52), 
+            self.window, text="Noskenējiet karti!",
+            font=("Arial", 64), 
             foreground="white",
             relief="solid",
             background="black")
@@ -164,20 +164,20 @@ class App:
             foreground="white",
             relief="solid",
             background="black")
-        self.bat.place(x=620,)
+        self.bat.place(x=610,)
 
     def mission_complete(self):
         self.msg.config(text="  Misija pabeigta!")
         self.window.after(3000, self.waiting_msg)
 
     def waiting_msg(self):
-        self.msg.config(text=" Noskenējiet karti!")
+        self.msg.config(text="Noskenējiet karti!")
     
     def start_countdown(self):
         if not self.timeout:
             return
         self.msg.place_forget()
-        self.timer.place(x=240, y=200)
+        self.timer.place(x=85, y=120)
         self.cnt = self.GAME_TIMEOUT
         self.timeout = False
         self.window.after(1000, self.countdown)

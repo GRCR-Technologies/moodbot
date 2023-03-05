@@ -1,18 +1,32 @@
 # The Moodbot (Digging Robot)
 
 ## Image setuping
-    sudo apt install git
-    sudo apt install python3-pip
-    sudo apt install python3-tk
-    sudo apt install xserver-xorg -y
-    sudo apt install xinit -y
-    sudo apt install x11-xserver-utils -y
-    pip3 install pyserial
+```sh
+sudo apt install git
+sudo apt install python3-pip
+sudo apt install python3-tk
+sudo apt install xserver-xorg -y
+sudo apt install xinit -y
+sudo apt install x11-xserver-utils -y
+pip3 install pyserial
+nano .xsession
+```
+```sh
+DISPLAY=:0 xrandr --output HDMI-2 --rotate left
 
-    nano .xsession
-    # add this line
-    DISPLAY=:0 xrandr --output HDMI-2 --rotate left
-    /home/pi/moodbot/py/app.py
+while true
+do
+    DISPLAY=:0 python3 /home/moonbot/moodbot/py/rpi_cu.py
+done
+```
+```sh
+sudo nano .bashrc
+```
+```sh
+startx
+```
+
+
 
 ## RF Protocol
 
