@@ -137,6 +137,46 @@ class App:
         self.timeout = True
         self.start_time = time()
         self.rate = 1000
+        self.init_gui()
+        
+    
+    def init_gui(self):
+        self.cnt = 0
+        self.cnt_sts = False
+        self.timer = Label(self.window, text="00:00", font=("Arial", 96), foreground="white", relief="solid", background="black")
+        self.msg = Label(self.window, text=" Noskenējiet karti!", font=("Arial", 48), foreground="white", relief="solid", background="black")
+        self.msg.place(x=10, y=200)
+        self.bat = Label(self.window, text="100%", font=("Arial", 48), foreground="white", relief="solid", background="black")
+        self.bat.place(x=630,)
+
+    def mission_complete(self):
+        self.msg.config(text="  Misija pabeigta!")
+        self.window.after(3000, self.waiting_msg)
+
+    def waiting_msg(self):
+        self.msg.config(text=" Noskenējiet karti!")
+    
+    def start_countdown(self):
+        if not self.timeout:
+            return
+        self.msg.place_forget()
+        self.timer.place(x=240, y=200)
+        self.cnt = self.GAME_TIMEOUT
+        self.timeout = False
+        self.window.after(1000, self.countdown)
+    
+    def countdown(self):
+        self.timer.config(text=f'{int((self.cnt-(self.cnt%60))/60):02d}:{self.cnt%60:02d}')
+        self.cnt -= 1
+
+        if self.cnt < 0:
+            self.timeout = True
+            self.timer.place_forget()
+            self.msg.place(x=10, y=200)
+            self.mission_complete()
+        else:
+            self.window.after(1000, self.countdown)
+
 
     def handle_joy(self, axis, buttons):
         MAX_PWM = 127
@@ -201,8 +241,7 @@ class App:
         if self.rfid_reader.id is not None:
             if self.check_rfid(self.rfid_reader.id):
                 print(f'RFID: {self.rfid_reader.id}')
-                self.timeout = False
-                self.start_time = time()
+                self.start_countdown()
                 self.rate = 50
         else:
             print("Activete with Access Key!")
@@ -229,12 +268,11 @@ class App:
                 print(f'X: {axis[0]-0.5}\nY: {axis[1]-0.5}')
                 print(f'data_to_send:{data}')
 
-            if self.start_time + self.GAME_TIMEOUT < now:
+            if self.timeout:
                 print("Disarm: Timeout!")
                 self.rf_serial.write(serial.to_bytes([255, 0, 0, 1, 94]))
                 rx_msg = self.rf_serial.readline()
                 self.handle_bat_lvl(rx_msg)
-                self.timeout = True
                 self.rate = 1000
         except Exception as err:
             print(err)
@@ -268,6 +306,7 @@ if __name__ == '__main__':
         # creating object
         app = App(window)
         window.after(app.rate, app.run_loop)
+        window.after(app.rate, app.)
         window.mainloop()
     except KeyboardInterrupt:
         print("Cleaning up!")
