@@ -2,7 +2,6 @@
 
 SoftwareSerial SwSerial(10, 11); // RX, TX
 
-
 // [START][SPD_R][SPD_L][CTRL][CRC]
 // [0xff][0-255][0-255][0-127][0-255]
 // START: 0xff
@@ -105,9 +104,6 @@ void handle_led()
     digitalWrite(LED, data[2]& LED_MAP);
 }
 
-
-
-
 void setup() {
     pinMode(R_WHL_PWM_PIN, OUTPUT); 
     pinMode(R_WHL_DIR_PIN, OUTPUT);  
@@ -117,40 +113,13 @@ void setup() {
     pinMode(DIG_ROT_DIR_PIN, OUTPUT);  
     pinMode(DIG_MOVE_PWM_PIN, OUTPUT);  
     pinMode(DIG_MOVE_DIR_PIN, OUTPUT); 
+    pinMode(LED, OUTPUT);
     
     SwSerial.begin(38400);
-    SwSerial.println("MOODBOT v0.3.0 SoftS");
-    // Serial.begin(1200);
-    // Serial.println("MOODBOT v0.3.0 HardS");
+    SwSerial.println("MOODBOT v0.5.0");
 }
 
-
-
 void loop() {
-    // if (Serial.available() >= 5) {
-    //     buff = Serial.read();
-    //     if (buff == 0xff) {
-    //         for (int i = 0; i < 3; i++) {
-    //             data[i] = Serial.read();
-    //         }
-    //         buff = Serial.read();
-    //         // for (int i = 0; i < 3; i++) {
-    //         //         Serial.print(data[i]);
-    //         //         Serial.print(" ");
-    //         // }
-    //         if (buff == get_crc()) {
-    //             Serial.println(":OK");
-    //             handle_wheels();
-    //             handle_dig_rot();
-    //             handle_dig_move();
-    //             handle_led();
-    //         } else {
-    //             Serial.println(":ERR");
-    //         }
-    //         //Serial.flush();
-    //     }
-       
-    // }
     if (SwSerial.available() >= 5) {
         buff = SwSerial.read();
         if (buff == 0xff) {
@@ -159,15 +128,13 @@ void loop() {
             }
             buff = SwSerial.read();
             if (buff == get_crc()) {
-                SwSerial.println(":OK");
-                //Serial.println(":OK");
+                SwSerial.println(String(analogRead(A0)) + ":OK");
                 handle_wheels();
                 handle_dig_rot();
                 handle_dig_move();
                 handle_led();
             } else {
-                SwSerial.println(":ERR");
-                //Serial.println(":ERR");
+                SwSerial.println(String(analogRead(A0)) + ":ERR");
             }
             //SwSerial.flush();
         }

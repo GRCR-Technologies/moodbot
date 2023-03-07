@@ -249,7 +249,15 @@ class App:
 
     # TODO: Implement battery level check
     def handle_bat_lvl(self, rx_msg):
-        print(rx_msg)
+        try:
+            bat = int(rx_msg.decode('utf-8').split(':')[0])
+            print(bat)
+        except:
+            print(rx_msg)
+            return
+
+        self.bat.config(text=f'{int((bat-723)/2.5)}%')
+        
 
 
     def open_rf_serial(self):
@@ -298,8 +306,10 @@ class App:
 
     def run_loop(self):
         if self.timeout:
+            self.rate = 1000
             self.check_id_status()
         else:
+            self.rate = 50
             self.run_rf_communication()
         self.window.after(self.rate, self.run_loop)
     
