@@ -159,7 +159,7 @@ class App:
         self.msg.place(x=10, y=200)
         self.bat = Label(
             self.window,
-            text="100%",
+            text="0%",
             font=("Arial", 48),
             foreground="white",
             relief="solid",
@@ -257,6 +257,11 @@ class App:
             return
 
         self.bat.config(text=f'{int((bat-723)/2.5)}%')
+
+        if bat < 790:
+            self.bat.config(foreground="red")
+        else:
+            self.bat.config(foreground="white")
         
 
 
