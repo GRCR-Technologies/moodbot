@@ -258,7 +258,7 @@ class App:
 
         self.bat.config(text=f'{int((bat-723)/2.5)}%')
 
-        if bat < 790:
+        if bat < 801:
             self.bat.config(foreground="red")
         else:
             self.bat.config(foreground="white")
