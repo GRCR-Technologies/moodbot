@@ -254,12 +254,12 @@ class App:
             else:
                 retval = False
                 self.used_ids.append(remote_id)
-            self.id_serial.write(retval.encode())
+            self.id_serial.write(str(retval).encode())
         except Exception as e:
             print(e)
 
     def check_remote_id(self, rx_msg):
-        self.id_serial.write(rx_msg.encode())
+        self.id_serial.write(str(rx_msg).encode())
         try:
             status = (self.id_serial.readline() == b'True')
         except Exception:
@@ -344,6 +344,7 @@ class App:
             #TODO: remove card from used cards list if failed
 
     def run_loop(self):
+        self.validate_remote_id()
         if self.timeout:
             self.rate = 1000
             self.check_id_status()
