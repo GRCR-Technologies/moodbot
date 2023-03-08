@@ -8,6 +8,8 @@ import threading
 import tkinter as tk
 from tkinter.ttk import Label
 
+DEBUG = True
+
 
 def get_crc8( data: bytes, poly: int) -> int:
         crc = 0
@@ -133,11 +135,12 @@ class App:
         self.button_reader = ButtonReader()
         self.timeout = True
         self.rf_serial = self.open_rf_serial()
-        self.id_serial = None
+        self.id_serial = self.open_id_serial()
         self.timeout = True
         self.start_time = time()
         self.rate = 1000
         self.init_gui()
+        self.used_ids = []
         
     
     def init_gui(self):
@@ -243,9 +246,33 @@ class App:
         data[4] = crc
         return data
 
+    def validate_remote_id(self):
+        try:
+            remote_id = int(self.id_serial.readline())
+            if remote_id in self.used_ids:
+                retval = True
+            else:
+                retval = False
+                self.used_ids.append(remote_id)
+            self.id_serial.write(retval.encode())
+        except Exception as e:
+            print(e)
+
+    def check_remote_id(self, rx_msg):
+        self.id_serial.write(rx_msg.encode())
+        try:
+            status = (self.id_serial.readline() == b'True')
+        except Exception:
+            status = False
+        return status 
+
     # TODO: Implement RFID list check
     def check_rfid(self, rfid):
-        return True
+
+        if rfid in self.used_ids or self.check_remote_id(rfid):
+            return True
+        self.used_ids.append(rfid)
+        return False
 
     # TODO: Implement battery level check
     def handle_bat_lvl(self, rx_msg):
@@ -266,16 +293,23 @@ class App:
 
 
     def open_rf_serial(self):
-        return serial.Serial(port='/dev/ttyUSB0', baudrate=38400, timeout=1)
+        return serial.Serial(port='/dev/ttyUSB0', baudrate=38400, timeout=0.1)
+
+    def open_id_serial(self):
+        return serial.Serial(port='/dev/serial0', baudrate=38400, timeout=0.01)
 
     def check_id_status(self):
         if self.rfid_reader.id is not None:
-            if self.check_rfid(self.rfid_reader.id):
-                print(f'RFID: {self.rfid_reader.id}')
+            if not self.check_rfid(self.rfid_reader.id):
+                if DEBUG: print(f'RFID: {self.rfid_reader.id}')
                 self.start_countdown()
                 self.rate = 50
+            else:
+                self.rfid_reader.id = None
+                self.mission_complete()
+
         else:
-            print("Activete with Access Key!")
+            if DEBUG: print("Activete with Access Key!")
             self.rf_serial.write(serial.to_bytes([255, 0, 0, 1, 94]))
             rx_msg = self.rf_serial.readline()
             self.handle_bat_lvl(rx_msg)
@@ -295,7 +329,7 @@ class App:
             rx_msg = self.rf_serial.readline()
             self.handle_bat_lvl(rx_msg)
 
-            if self.DEBUG:
+            if DEBUG:
                 print(f'X: {axis[0]-0.5}\nY: {axis[1]-0.5}')
                 print(f'data_to_send:{data}')
 
