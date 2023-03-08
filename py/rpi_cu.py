@@ -128,11 +128,13 @@ class ButtonReader:
         self.button_dig_ccw.close()
 
 class App:
-    GAME_TIMEOUT = 10 # 360=3min
+    GAME_TIMEOUT = 10 # 360=0h03min
+    ID_TIMEOUT = 20 # 28800=8h00min
     DEBUG = True
 
     def __init__(self, window):
         self.window: tk.Tk = window
+        self.boot_time = time()
         self.rfid_reader = MFRC522Reader()
         self.rfid_reader.run()
         self.joystick_reader = MCP3004Reader()
@@ -353,11 +355,17 @@ class App:
                 pass
             #TODO: remove card from used cards list if failed
 
+    def check_id_timout(self):
+        if time() - self.boot_time > self.ID_TIMEOUT:
+            self.used_ids = []
+            self.boot_time = time()
+
     def run_loop(self):
         self.validate_remote_id()
         if self.timeout:
             self.rate = 1000
             self.check_id_status()
+            self.check_id_timout()
         else:
             self.rate = 50
             self.run_rf_communication()
