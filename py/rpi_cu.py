@@ -1,3 +1,8 @@
+# Product: MoodBot
+# Author:  Edgars Grankins
+# Company: GRCR-Technologies  
+# Date:    08.04.2023
+
 from gpiozero import Button, MCP3004
 from time import time, sleep
 import serial 
@@ -8,8 +13,7 @@ import threading
 import tkinter as tk
 from tkinter.ttk import Label
 
-DEBUG = True
-
+DEBUG = False
 
 def get_crc8( data: bytes, poly: int) -> int:
         crc = 0
@@ -38,9 +42,9 @@ class MFRC522Reader:
 
     def run_loop(self):
         while True:
-            print("Hold a tag near the reader")
+            if DEBUG: print("Hold a tag near the reader")
             self.id, self.text = self.read()
-            print(self.id)
+            if DEBUG: print(self.id)
             sleep(1)
 
     def run(self):
@@ -256,7 +260,10 @@ class App:
                 self.used_ids.append(remote_id)
             self.id_serial.write(str(retval).encode())
         except Exception as e:
-            print(e)
+            if DEBUG: 
+                print(e)
+            else: 
+                pass
 
     def check_remote_id(self, rx_msg):
         self.id_serial.write(str(rx_msg).encode())
@@ -278,9 +285,9 @@ class App:
     def handle_bat_lvl(self, rx_msg):
         try:
             bat = int(rx_msg.decode('utf-8').split(':')[0])
-            print(bat)
+            if DEBUG: print(bat)
         except:
-            print(rx_msg)
+            if DEBUG: print(rx_msg)
             return
 
         self.bat.config(text=f'{int((bat-723)/2.5)}%')
@@ -318,7 +325,7 @@ class App:
     def run_rf_communication(self):
         try:
             now = time()
-            print(now-self.start_time)
+            if DEBUG: print(now-self.start_time)
             self.rfid_reader.id = None
 
             axis = self.joystick_reader.read()
@@ -340,7 +347,10 @@ class App:
                 self.handle_bat_lvl(rx_msg)
                 self.rate = 1000
         except Exception as err:
-            print(err)
+            if DEBUG: 
+                print(err)
+            else:
+                pass
             #TODO: remove card from used cards list if failed
 
     def run_loop(self):
