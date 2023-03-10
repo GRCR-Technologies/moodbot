@@ -213,12 +213,12 @@ class App:
         if abs(axis[0]-0.5) < 0.1:
             l_r_coef = 0
         else:
-            l_r_coef = int((axis[0]-0.5)*2*MAX_PWM)
+            l_r_coef = int((axis[0]-0.5)*2*MAX_PWM)*-1
         
         if  abs(axis[1]-0.5) < 0.1:
             f_b_coef = 0
         else:
-            f_b_coef = int((axis[1]-0.5)*-2*MAX_PWM)
+            f_b_coef = int((axis[1]-0.5)*-2*MAX_PWM)*-1
         l_wheels_spd = (f_b_coef-l_r_coef)*-1
         r_wheels_spd = (f_b_coef+l_r_coef)*-1
         if l_wheels_spd > MAX_PWM:

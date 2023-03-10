@@ -37,7 +37,8 @@ SoftwareSerial SwSerial(10, 11); // RX, TX
 #define DIG_MOVE_ON_MAP 0x10
 #define DIG_MOVE_DIR_PIN 8
 #define DIG_MOVE_DIR_MAP 0x20
-#define DIG_MOVE_PWM_MAX 127
+#define DIG_MOVE_PWM_MAX 200
+
 
 #define LED 12
 #define LED_MAP 0x40

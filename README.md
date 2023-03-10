@@ -11,8 +11,9 @@ sudo apt install x11-xserver-utils -y
 pip3 install pyserial
 nano .xsession
 ```
+
 ```sh
-DISPLAY=:0 xrandr --output HDMI-2 --rotate left
+DISPLAY=:0 xrandr --output HDMI-2 --rotate right
 
 while true
 do
