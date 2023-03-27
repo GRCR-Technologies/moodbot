@@ -1,6 +1,13 @@
+// Product: MoodBot (Robot)
+// Author:  Edgars Grankins
+// Company: GRCR-Technologies
+// Date:    27.03.2023
+// Version: 0.5
+// License: LGPLv3
+
 #include <SoftwareSerial.h>
 
-SoftwareSerial SwSerial(10, 11); // RX, TX
+SoftwareSerial swSerial(10, 11); // RX, TX
 
 // [START][SPD_R][SPD_L][CTRL][CRC]
 // [0xff][0-255][0-255][0-127][0-255]
@@ -17,14 +24,13 @@ SoftwareSerial SwSerial(10, 11); // RX, TX
 // CTRL.6: 0 = LED_OFF ,        1 = LED_ON      0x40
 // CRC: 0-255
 
-
-
-#define L_WHL_PWM_PIN 3  //6  //9
-#define L_WHL_DIR_PIN 2  //7  //8
+// Constants and pin assignments
+#define L_WHL_PWM_PIN 3
+#define L_WHL_DIR_PIN 2
 #define L_WHL_DIR_MAP 0x01
 
-#define R_WHL_PWM_PIN 9  //5  //3
-#define R_WHL_DIR_PIN 4  //8  //2
+#define R_WHL_PWM_PIN 9
+#define R_WHL_DIR_PIN 4
 #define R_WHL_DIR_MAP 0x02
 
 #define DIG_ROT_PWM_PIN 6
@@ -39,15 +45,14 @@ SoftwareSerial SwSerial(10, 11); // RX, TX
 #define DIG_MOVE_DIR_MAP 0x20
 #define DIG_MOVE_PWM_MAX 200
 
-
 #define LED 12
 #define LED_MAP 0x40
 
 byte data[3];
 byte buff;
 
-int get_crc()
-{
+// Calculate CRC
+int get_crc() {
     byte crc = 0;
     for (int i = 0; i < 3; i++) {
         crc ^= data[i];
@@ -62,84 +67,76 @@ int get_crc()
     return crc;
 }
 
-
-void handle_wheels()
-{
-    // hadle L wheel
+// Handle left and right wheels
+void handle_wheels() {
     digitalWrite(L_WHL_DIR_PIN, data[2] & L_WHL_DIR_MAP);
     analogWrite(L_WHL_PWM_PIN, data[0]);
 
-    // hadle R wheel
     digitalWrite(R_WHL_DIR_PIN, data[2] & R_WHL_DIR_MAP);
     analogWrite(R_WHL_PWM_PIN, data[1]);
 }
 
-void handle_dig_rot()
-{
+// Handle dig rotation
+void handle_dig_rot() {
     if (data[2] & DIG_ROT_ON_MAP) {
-        // dig rot direction
+        // dig rotation direction
         digitalWrite(DIG_ROT_DIR_PIN, data[2] & DIG_ROT_DIR_MAP);
-        // dig rot on
+        // dig rotation on/off
         analogWrite(DIG_ROT_PWM_PIN, DIG_ROT_PWM_MAX);
     } else {
-        // dig rot off
         analogWrite(DIG_ROT_PWM_PIN, 0);
     }
 }
 
-void handle_dig_move()
-{
+// Handle dig movement
+void handle_dig_move() {
     if (data[2] & DIG_MOVE_ON_MAP) {
-        // dig move direction
+        // Dig direction
         digitalWrite(DIG_MOVE_DIR_PIN, data[2] & DIG_MOVE_DIR_MAP);
-        // dig move on
+        // Dig on/off
         analogWrite(DIG_MOVE_PWM_PIN, DIG_MOVE_PWM_MAX);
     } else {
-        // dig move off
         analogWrite(DIG_MOVE_PWM_PIN, 0);
     }
 }
 
-void handle_led()
-{
-    digitalWrite(LED, data[2]& LED_MAP);
+// Handle LED
+void handle_led() {
+    digitalWrite(LED, data[2] & LED_MAP);
 }
 
 void setup() {
-    pinMode(R_WHL_PWM_PIN, OUTPUT); 
-    pinMode(R_WHL_DIR_PIN, OUTPUT);  
-    pinMode(L_WHL_PWM_PIN, OUTPUT);  
-    pinMode(L_WHL_DIR_PIN, OUTPUT); 
-    pinMode(DIG_ROT_PWM_PIN, OUTPUT);  
-    pinMode(DIG_ROT_DIR_PIN, OUTPUT);  
-    pinMode(DIG_MOVE_PWM_PIN, OUTPUT);  
-    pinMode(DIG_MOVE_DIR_PIN, OUTPUT); 
+    pinMode(R_WHL_PWM_PIN, OUTPUT);
+    pinMode(R_WHL_DIR_PIN, OUTPUT);
+    pinMode(L_WHL_PWM_PIN, OUTPUT);
+    pinMode(L_WHL_DIR_PIN, OUTPUT);
+    pinMode(DIG_ROT_PWM_PIN, OUTPUT);
+    pinMode(DIG_ROT_DIR_PIN, OUTPUT);
+    pinMode(DIG_MOVE_PWM_PIN, OUTPUT);
+    pinMode(DIG_MOVE_DIR_PIN, OUTPUT);
     pinMode(LED, OUTPUT);
-    
-    SwSerial.begin(38400);
-    SwSerial.println("MOODBOT v0.5.0");
+
+    swSerial.begin(38400);
+    swSerial.println("MOODBOT v0.5.0");
 }
 
 void loop() {
-    if (SwSerial.available() >= 5) {
-        buff = SwSerial.read();
+    if (swSerial.available() >= 5) {
+        buff = swSerial.read();
         if (buff == 0xff) {
             for (int i = 0; i < 3; i++) {
-                data[i] = SwSerial.read();
+                data[i] = swSerial.read();
             }
-            buff = SwSerial.read();
+            buff = swSerial.read();
             if (buff == get_crc()) {
-                SwSerial.println(String(analogRead(A0)) + ":OK");
+                swSerial.println(String(analogRead(A0)) + ":OK");
                 handle_wheels();
                 handle_dig_rot();
                 handle_dig_move();
                 handle_led();
             } else {
-                SwSerial.println(String(analogRead(A0)) + ":ERR");
+                swSerial.println(String(analogRead(A0)) + ":ERR");
             }
-            //SwSerial.flush();
         }
-       
     }
 }
-
